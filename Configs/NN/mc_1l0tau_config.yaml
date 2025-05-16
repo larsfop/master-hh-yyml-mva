@@ -1,0 +1,58 @@
+model:
+  input_shape: 11
+  output_shape: 3
+  layers:
+    - type: "dense"
+      neurons: 2048
+      activation: "relu"    
+    - type: "dense"
+      neurons: 2048
+      activation: "relu"    
+    - type: "dense"
+      neurons: 2048
+      activation: "relu"    
+    - type: "dense"
+      neurons: 2048
+      activation: "relu"    
+    - type: "dense"
+      neurons: 2048
+      activation: "relu"   
+    - type: "dense"
+      neurons: 2048
+      activation: "relu"
+
+training:
+  batch_size: 8192
+  optimizer: "adam"
+  learning_rate: 1e-6
+  regularization: 1e-7
+  loss_function: "crossentropy"
+  input_features: [
+    'pt_H',
+    'lep_phi0_1',
+    'met', 
+    'lep_pt_1',
+    'N_j_central',
+    'Dphi_metyy',
+    'y1_phi0',
+    'minDphi_metjl',
+    'Dr_lv', 
+    'Dr_yyW', 
+    'eta_W',
+  ]
+  
+EarlyStopping:
+  patience: 5
+  rise_delta: 1e-5
+  threshold_delta: 1e-4
+  
+data:
+  train_dataset: "/path/to/train_data.csv"
+  validation_dataset: "/path/to/validation_data.csv"
+  test_dataset: "/path/to/test_data.csv"
+  target_column: "label"
+
+logging:
+  log_dir: "/path/to/logs"
+  save_model: true
+  model_save_path: "/path/to/saved_model.h5"

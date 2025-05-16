@@ -1,0 +1,15 @@
+
+Scripts/BDTG/build
+Output
+__pycache__
+
+*.png
+*.pdf
+*.tar
+*.zip
+*.root
+*.txt
+*.hdf5
+
+!CMakeLists.txt
+libbdtg_rdict.pcm
