@@ -33,7 +33,7 @@ def plot_weights(
     ax.set_title(f'Weights distribution {process} - {channel}', fontsize=32)
     
     ax.tick_params(axis='both', which='major', labelsize=24)
-    ax.xaxis.offsetText.set_fontsize(16)
+    ax.xaxis.offsetText.set_fontsize(20)
     
     fig.savefig(name, bbox_inches='tight')
     
@@ -410,7 +410,10 @@ def plot_ternary(
     fold: int|None,
 ) -> None:
     
-    pred = data.iloc[:, :3].values
+    if fold is None:
+        pred = data.loc[:, ['DNN_signal', 'DNN_SH', 'DNN_CB']].values
+    else:
+        pred = data.loc[:, [f'DNN_signal_fold{fold}', f'DNN_SH_fold{fold}', f'DNN_CB_fold{fold}']].values
     true = data['classID'].values
     weights = data['weight'].values
     
@@ -462,6 +465,47 @@ def plot_ternary(
             mc_name = name.split('_')
             mc_name.insert(-1, id)
             mc_name = '_'.join(mc_name)
+            
+        ax.plot(
+            (0.4, 0.4),
+            (0.6, 0.4),
+            (0, 0.2),
+            color='red',
+            linewidth=2,
+        )
+        
+        ax.plot(
+            (0.4, 0.4),
+            (0.4, 0),
+            (0.2, 0.6),
+            color='red',
+            linewidth=2,
+            linestyle='--',
+        )
+        
+        ax.plot(
+            (0.8, 0.4),
+            (0, 0.4),
+            (0.2, 0.2),
+            linewidth=2,
+            color='red',
+        )
+        
+        ax.plot(
+            (0.4, 0),
+            (0.4, 0.8),
+            (0.2, 0.2),
+            color='red',
+            linewidth=2,
+            linestyle='--',
+        )
+
+        ax.axline(
+            (0.3, 0.7, 0),
+            (0.3, 0, 0.7),
+            color='green',
+            linewidth=2,
+        )
         
         fig.savefig(mc_name, bbox_inches='tight')
         
@@ -915,6 +959,13 @@ def main(
                 fig=fig,
                 ax=ax,
             )
+        
+        plot_ternary(
+            data,
+            channel=channel,
+            name=combined_output / f'combined_{channel}_ternary.{suffix}',
+            fold=None,
+        )
         
         plt.close('all')
     
