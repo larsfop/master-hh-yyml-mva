@@ -6,23 +6,16 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import random_split, TensorDataset, DataLoader, SubsetRandomSampler
-from torcheval.metrics import BinaryAccuracy
 
-from sklearn import metrics
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from pathlib import Path
 import argparse
 import uproot
-import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
-import time
 import sys
 import os
-import json
-import warnings
 from typing_extensions import Callable, Dict, Any
 import sys
 

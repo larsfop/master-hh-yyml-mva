@@ -1,7 +1,6 @@
 
 import numpy as np
 import torch
-import torch.nn as nn
 import sklearn.metrics as metrics
 from sklearn.preprocessing import OneHotEncoder
 import scipy.integrate as integrate

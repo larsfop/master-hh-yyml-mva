@@ -2,6 +2,7 @@
 Scripts/BDTG/build
 Output
 __pycache__
+.vscode
 
 *.png
 *.pdf

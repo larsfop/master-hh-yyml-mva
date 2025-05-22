@@ -2,30 +2,20 @@ import torch.multiprocessing as mp
 mp.set_sharing_strategy('file_system')
 import torch.nn as nn
 import torch
-from torch.utils.data import TensorDataset, DataLoader, SubsetRandomSampler, random_split
-from torcheval.metrics import BinaryAccuracy
+from torch.utils.data import TensorDataset, DataLoader
 from numpy import ndarray
 import numpy as np
-import pandas as pd
-from alive_progress import alive_bar
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-import sklearn.metrics as metrics
 import sys
 import time
 from typing import Callable, OrderedDict
 from copy import deepcopy
 # import multiprocessing as mp
 from multiprocessing.managers import BaseManager
-from multiprocessing import managers
 import enlighten
-from parallelbar import progress_imapu, progress_map, progress_imap
-import threading as mt
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from scipy import integrate
 from pathlib import Path
-import os
 import sys
 import traceback
 
@@ -33,10 +23,6 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 
 from utils.model_dict import set_model_structure
-from utils.timer import Timer
-from utils.metrics import auc_score
-from utils.logger import NNLogger
-
 
 class EarlyStopping:
     def __init__(

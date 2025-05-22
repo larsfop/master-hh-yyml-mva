@@ -7,7 +7,6 @@ from pathlib import Path
 import argparse
 import ROOT as R
 import sys
-import os
 import mpltern
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
