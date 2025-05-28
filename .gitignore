@@ -14,3 +14,4 @@ __pycache__
 
 !CMakeLists.txt
 libbdtg_rdict.pcm
+!requirements.txt
