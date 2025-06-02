@@ -20,6 +20,22 @@ function help() {
     exit 1
 }
 
+function compile() {
+    echo "Want to compile? (y/n)"
+    read -r compile_choice
+    if [ "$compile_choice" == "y" ]; then
+        ./compile_bdtg.sh
+
+        wait
+    elif [ "$compile_choice" == "n" ]; then
+        echo "Exiting without compiling."
+        exit 1
+    else
+        echo "Invalid choice. Please enter 'y' or 'n'."
+        compile
+    fi
+}
+
 # Parse command line arguments
 epochs=100
 kfolds=0
@@ -70,9 +86,19 @@ for channel in "${channels[@]}"; do
         mkdir Output/$channel/BDTG
         mkdir Output/Files
     (
+
+        if [ ! -f Scripts/BDTG/libbdtg_rdict.pcm ]; then
+            echo "Error: libbdtg_rdict.pcm not found in $(pwd)."
+            echo "Compile the BDTG first."
+
+            compile
+
+            wait
+        fi
+
         cd Scripts/BDTG
 
-        ./bdtg -c $channel -n $n_jobs -k $kfolds -c
+        ./bdtg -c $channel -n $n_jobs -k $kfolds -b
     )
     elif [ $mva == "dnn" ]; 
     then

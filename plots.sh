@@ -7,6 +7,7 @@ trap "kill 0" SIGINT
 function help() {
     echo "Usage: $0 [-h] [channels]"
     echo "Options:"
+    echo "  -s suffix  Specify the suffix for the output files (default: pdf)"
     echo "  -h  Show this help message"
     echo "channels: Specify the channels (1l0tau, 0l1tau, 2l0tau, 1l1tau, 0l2tau)"
     echo "If no channels are specified, all channels will be processed."

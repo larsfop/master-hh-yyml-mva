@@ -16,6 +16,4 @@ echo "Compiling c++ ROOT files"
 
     mv bdtg ../
     mv libbdtg_rdict.pcm ../
-
-    echo "Run classification.sh with the BDTG mva flag"
 )
