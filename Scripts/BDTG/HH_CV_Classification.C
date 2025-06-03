@@ -158,7 +158,7 @@ void CV_Classification(TString channel, TString path, Int_t nFolds)
     outfile->Close();
 }
 
-int HH_CV_Classification(TString channel = "1l0tau", TString path = "", Int_t nFolds = 4)
+int HH_CV_Classification(TString channel = "1l0tau", TString path = "../../", Int_t nFolds = 4)
 {
     TMVA::Tools::Instance();
 

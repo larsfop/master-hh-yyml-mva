@@ -6,7 +6,7 @@ echo "Compiling c++ ROOT files"
 (
     cd Scripts/BDTG
 
-    mkdir build
+    mkdir -p build
 
     cd build
 

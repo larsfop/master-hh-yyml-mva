@@ -83,8 +83,8 @@ for channel in "${channels[@]}"; do
 
     if [ $mva == "bdt" ]; 
     then
-        mkdir Output/$channel/BDTG
-        mkdir Output/Files
+        mkdir -p Output/$channel/BDTG
+        mkdir -p Output/Files
     (
 
         if [ ! -f Scripts/BDTG/libbdtg_rdict.pcm ]; then

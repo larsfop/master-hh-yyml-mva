@@ -228,7 +228,7 @@ void CV_Application(TString channel, TString path)
     }
 }
 
-int HH_CV_Application(TString channel = "1l0tau", TString path = "")
+int HH_CV_Application(TString channel = "1l0tau", TString path = "../../")
 {
     TMVA::Tools::Instance();
 
