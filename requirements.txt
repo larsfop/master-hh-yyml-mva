@@ -18,3 +18,4 @@ tqdm==4.67.0
 typing==3.7.4.3
 typing_extensions==4.12.2
 uproot==5.0.10
+awkward_pandas==2023.8.0
