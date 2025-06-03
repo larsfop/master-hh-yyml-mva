@@ -136,10 +136,10 @@ if __name__=="__main__":
         '-e', '--epochs', type=int, default=100, help='Number of training epochs'
     )
     parser.add_argument(
-        '-bw', '--balanced_weights', action='store_true', help='Use balanced weights for the training, default: False'
+        '-bw', '--balanced_weights', action='store_false', help='Use balanced weights for the training, default: True'
     )
     parser.add_argument(
-        '-gw', '--generator_weights', action='store_true', help='Use generator weights for the training, default: False'
+        '-gw', '--generator_weights', action='store_false', help='Use generator weights for the training, default: True'
     )
     parser.add_argument(
         '-pb', '--pbar', action='store_false', help='Show progress bar during training'

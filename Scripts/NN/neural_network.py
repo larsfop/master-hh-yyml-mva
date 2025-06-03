@@ -518,25 +518,44 @@ class NeuralNetwork:
             fold=fold
         )
         
-        if self.norm_mode == 'balanced':
-            # w_norm = w_train[y_train == 0].sum() / w_train[y_train == 1].sum()
-            # w_train[y_train == 1] *= w_norm
-            # w_test[y_test == 1] *= w_norm
-            if self.classification == 'binary':
-                w_norm = w_train[y_train == 0].sum() / w_train[y_train == 1].sum()
-                w_train[y_train == 1] *= w_norm
-                w_test[y_test == 1] *= w_norm
-                
-                print((w_test[y_test == 1].sum(), w_test[y_test == 0].sum()))
-                
-            else:
-                w_sum = w_train.sum()
-                for i in range(3):
-                    w_norm = w_sum / w_train[y_train== i].sum()
-                    w_train[y_train == i] *= w_norm
-                    w_test[y_test == i] *= w_norm
+        # Prepare training weights
+        class_weights = None
+        if self.balanced_weights: 
+            if self.generator_weights:
+                # Normalize the generator weights
+                if self.classification == 'binary':
+                    w_norm = w_train[y_train == 0].sum() / w_train[y_train == 1].sum()
+                    w_train[y_train == 1] *= w_norm
+                    w_test[y_test == 1] *= w_norm
                     
-                print(w_test[y_test == 0].sum(), w_test[y_test == 1].sum(), w_test[y_test == 2].sum())
+                    print((w_train[y_train == 1].sum(), w_train[y_train == 0].sum()))
+                    
+                else:
+                    w_sum = w_train.sum()
+                    for i in range(3):
+                        w_train[y_train == i] *= w_sum / w_train[y_train == i].sum()
+                        w_test[y_test == i] *= w_sum / w_train[y_train == i].sum()
+                        
+                    print(w_train[y_train == 0].sum(), w_train[y_train == 1].sum(), w_train[y_train == 2].sum())
+            else:    
+                # Compute class weights
+                w_train = torch.ones_like(y_train, device=self.device)
+                w_test = torch.ones_like(y_test, device=self.device)
+                
+                if self.classification == 'binary':
+                    class_weights = (y_train == 0).sum() / y_train.sum()
+                
+                else:
+                    class_weights = torch.tensor(
+                        compute_class_weight('balanced', classes=np.unique(y_train.cpu().numpy()), y=y_train.cpu().numpy()), 
+                        device=self.device,
+                        dtype=torch.float
+                    )
+            
+        elif not self.generator_weights:
+            # No weighting
+            w_train = torch.ones_like(y_train, device=self.device)
+            w_test = torch.ones_like(y_test, device=self.device)
 
         train_ds = TensorDataset(X_train, y_train, w_train)
         test_ds = TensorDataset(X_test, y_test, w_test)
@@ -553,12 +572,12 @@ class NeuralNetwork:
         if self.classification == 'binary':
             loss_function = self.loss_function(
                 reduction='none',
-                pos_weight=self.class_weights
+                pos_weight=class_weights
             )
         else:
             loss_function = self.loss_function(
                 reduction='none', 
-                weight=self.class_weights
+                weight=class_weights
             )
         optimizer = self.optimizer(
             model.parameters(),
