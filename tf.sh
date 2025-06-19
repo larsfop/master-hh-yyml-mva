@@ -10,7 +10,7 @@ function help() {
     exit 1
 }
 
-path=Configs/run2_configs/
+path=Configs/TRExFitter/
 mva=BDTG
 
 while getopts bmtho: flag
@@ -44,42 +44,42 @@ done
 for channel in "${channels[@]}"; do
     echo "Running TRexFitter for channel: $channel"
     # Check if the config file exists
-    if [ ! -f Configs/run2_configs/$mva/$channel"_run2.config" ]; then
-        echo "Config file not found: Configs/run2_configs/$mva/$channel"_run2.config""
+    if [ ! -f Configs/TRExFitter/$mva/$channel"_run2.config" ]; then
+        echo "Config file not found: Configs/TRExFitter/$mva/$channel"_run2.config""
         exit 1
     fi
 
     if [ $channel == "yyml" ]; then
         if [ -z $opts ]; then
-            trex-fitter mnw Configs/run2_configs/$mva/$channel"_run2.config"
+            trex-fitter mnw Configs/TRExFitter/$mva/$channel"_run2.config"
 
             wait
 
-            trex-fitter mf Configs/run2_configs/$mva/$channel"_run2.config"
+            trex-fitter mf Configs/TRExFitter/$mva/$channel"_run2.config"
 
             wait
 
-            trex-fitter ms Configs/run2_configs/$mva/$channel"_run2.config"
+            trex-fitter ms Configs/TRExFitter/$mva/$channel"_run2.config"
 
             wait
 
-            trex-fitter ml Configs/run2_configs/$mva/$channel"_run2.config"
+            trex-fitter ml Configs/TRExFitter/$mva/$channel"_run2.config"
 
             wait
         else
-            trex-fitter m$opts Configs/run2_configs/$mva/$channel"_run2.config"
+            trex-fitter m$opts Configs/TRExFitter/$mva/$channel"_run2.config"
         fi
     else
         if [ -z $opts ]; then
-            trex-fitter nwdf Configs/run2_configs/$mva/$channel"_run2.config"
+            trex-fitter nwdf Configs/TRExFitter/$mva/$channel"_run2.config"
 
             wait
 
-            trex-fitter sl Configs/run2_configs/$mva/$channel"_run2.config"
+            trex-fitter sl Configs/TRExFitter/$mva/$channel"_run2.config"
 
             wait
         else
-            trex-fitter $opts Configs/run2_configs/$mva/$channel"_run2.config"
+            trex-fitter $opts Configs/TRExFitter/$mva/$channel"_run2.config"
         fi
     fi
 done
