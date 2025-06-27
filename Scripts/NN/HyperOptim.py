@@ -1,22 +1,17 @@
-
-from ray.train._internal.storage import StorageContext
-from ray.tune.experiment import Trial
-from ray.tune.logger import Logger
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import random_split, TensorDataset, DataLoader, SubsetRandomSampler
+from torch.utils.data import TensorDataset, DataLoader, SubsetRandomSampler
 
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from pathlib import Path
 import argparse
-import uproot
 import numpy as np
 import sys
 import os
-from typing_extensions import Callable, Dict, Any
+from typing_extensions import Callable
 import sys
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -28,6 +23,7 @@ os.environ['TUNE_DISABLE_AUTO_CALLBACK_LOGGERS'] = '1'
 os.environ['TUNE_DISABLE_STRICT_METRIC_CHECKING'] = '1'
 os.environ['TUNE_RESULTS_DIR'] = './Hyperparameter_Optimization'
 
+# Reduce the backend log level such that the /tmp directory does not get filled up
 try:
     os.environ['RAY_BACKEND_LOG_LEVEL'] = 'fatal'
 except:
@@ -45,102 +41,8 @@ from utils.hh_dataset import HH_Dataset_hdf5
 from utils.model_dict import set_model_structure
 from neural_network import NeuralNetwork, Model, EarlyStopping
 from utils.metrics import auc_score
+from utils.logger import CustomLogger
 
-
-
-class CustomLogger(LoggerCallback):
-    def __init__(self, channel: str, classification: str, kfold: int = 0, grid_search: str = ''):
-        self.channel = channel
-        self.kfold = kfold
-        cl = 'bc' if classification == 'binary' else 'mc'
-        self.path = workspace_path / Path(f'Output/{channel}/NN/Hyperparameter_Optimisation/{cl}_{channel}_{grid_search}.root')
-        
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-
-        self.results = {}
-        self.config = {}
-        
-    def on_trial_start(self, trial, **info):
-        pass
-    
-        
-    def on_trial_result(self, iteration, trial, result, **info):
-        pass
-        
-        
-    def on_trial_complete(self, iteration, trials, trial, **info):
-        self.config[trial.trial_id] = trial.config
-        
-    
-    def on_experiment_end(self, trials, **info):
-        # with uproot.open(self.path) as oldfile:
-        print(
-            '------------------------------------------\n'\
-            '   Hyperparameter optimization complete\n'\
-            f'  Writing results to {self.path.stem}\n'\
-            '------------------------------------------'
-        )
-        
-        n = len(trials)
-        
-        params = {
-            'eta': np.zeros(n),
-            'lambda': np.zeros(n),
-            'batch_size': np.zeros(n),
-            'num_hidden_layers': np.zeros(n),
-            'num_hidden_neurons': np.zeros(n),
-        }
-        if not self.kfold:
-            params.update({
-                'train_loss': np.zeros(n),
-                'train_auc': np.zeros(n),
-                'test_loss': np.zeros(n),
-                'test_auc': np.zeros(n),
-            })
-        else:
-            params.update({
-                f'{name}_fold_{i}': np.zeros(n) for i in range(1, self.kfold + 1) for name in ['train_loss', 'train_auc', 'test_loss', 'test_auc']
-            })
-            params.update({
-                'train_loss_mean': np.zeros(n),
-                'train_auc_mean': np.zeros(n),
-                'test_loss_mean': np.zeros(n),
-                'test_auc_mean': np.zeros(n),
-            })
-            
-        for i, trial in enumerate(trials):
-            result = trial.last_result
-            config = trial.config
-            
-            params['eta'][i] = config['lr']
-            params['lambda'][i] = config['lmbda']
-            params['batch_size'][i] = config['batch_size']
-            params['num_hidden_layers'][i] = len(config['hidden_neurons'])
-            params['num_hidden_neurons'][i] = config['hidden_neurons'][0]
-            
-            if not self.kfold:
-                params['train_loss'][i] = result['train_loss']
-                params['train_auc'][i] = result['train_auc']
-                params['test_loss'][i] = result['test_loss']
-                params['test_auc'][i] = result['test_auc']
-                
-            else:
-                for fold in range(1, self.kfold + 1):
-                    params[f'train_loss_fold_{fold}'][i] = result[f'fold_{fold}']['train_loss']
-                    params[f'train_auc_fold_{fold}'][i] = result[f'fold_{fold}']['train_auc']
-                    params[f'test_loss_fold_{fold}'][i] = result[f'fold_{fold}']['test_loss']
-                    params[f'test_auc_fold_{fold}'][i] = result[f'fold_{fold}']['test_auc']
-                    
-                params['train_loss_mean'][i] = result['train_loss']
-                params['train_auc_mean'][i] = result['train_auc']
-                params['test_loss_mean'][i] = result['test_loss']
-                params['test_auc_mean'][i] = result['test_auc']
-                    
-        with uproot.recreate(self.path) as file:
-            
-            file['Hyperparameter_Optimisation'] = params
-                
-    
 class DNN_Tuner(tune.Trainable, NeuralNetwork):
     def setup(
             self, 
@@ -155,8 +57,6 @@ class DNN_Tuner(tune.Trainable, NeuralNetwork):
             if not isinstance(value, Callable):
                 setattr(self, key, value)
 
-        # self.background_weight = 1/self.signal_weight
-        
         # change the config to list the neurons for logging
         self.config['num_hidden_layers'] = len(self.hidden_neurons)
         self.config['num_features'] = len(self.features)
@@ -627,7 +527,11 @@ if __name__ == "__main__":
             reduction_factor=2
         )
     
-    logger = CustomLogger(channel, args.classification, args.kfold, args.grid_search)
+    cl = 'mc' if args.classification == 'multiclass' else 'bc'
+    logger = CustomLogger(
+        args.kfold, 
+        workspace_path / Path(f'Output/{channel}/NN/Hyperparameter_Optimisation/{cl}_{channel}_{args.grid_search}.root')
+    )
 
     tuner = tune.Tuner(
         # trainable class used by framework

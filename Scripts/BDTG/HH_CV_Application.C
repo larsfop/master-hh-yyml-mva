@@ -2,6 +2,7 @@
 
 void CV_Application(TString channel, TString path)
 {
+    // Declare variables
     Long64_t eventID;
     Int_t MCTypes, MC16Types;
     Int_t N_j_central, N_j_removal, N_jrec, N_Cluster, N_j;
@@ -18,6 +19,7 @@ void CV_Application(TString channel, TString path)
     Float_t f_m_H, f_Dr_yyl1, f_M_XminusS, f_met_phi0, f_Dphi_yyW, f_Jet_pt1, f_Jet_pt2, f_phi_W, f_pt_W, f_y2_pt, f_sumet, f_y1_pt, f_y2_phi0, f_mbig2, f_ptbig2, f_Dy_bigyy2, f_rfr0, f_rfr1, f_msum, f_ptsum, f_etsumtot, f_ptbig, f_msum2, f_ptsum2, f_etsumleft, f_pt_lv, f_N_Cluster, f_met_sig, f_N_j, f_N_jrec, f_lep_pt_2, f_pt_ll, f_pt_yyll, f_MT, f_m_ll, f_Dphi_ll, f_Dphi_yyll, f_Dr_lv, f_pt_W2, f_Dr_ll, f_Dr_jj, f_Dr_lj;
     Float_t f_BDT, f_McNumber;
 
+    // Initialize the TMVA reader
     TMVA::Reader *reader = new TMVA::Reader("Color:Silent");
     reader->AddVariable("pt_H", &f_pt_H);
     reader->AddVariable("lep_phi0_1", &f_lep_phi0_1);
@@ -54,14 +56,6 @@ void CV_Application(TString channel, TString path)
         reader->AddVariable("Jet_pt1", &f_Jet_pt1);
     }
 
-    // reader->AddVariable("HT",              &f_HT);
-    // reader->AddVariable("MT_W1",           &f_MT_W1);
-    // reader->AddVariable("mbig",            &f_mbig);
-    // reader->AddVariable("ptbig",           &f_ptbig);
-    // reader->AddVariable("Dy_bigyy",        &f_Dy_bigyy);
-    // reader->AddVariable("Dy_bigyy2",       &f_Dy_bigyy2);
-    // reader->AddVariable("Dr_lj",           &f_Dr_lj);
-
     reader->AddSpectator("eventID", &f_eventID);
     reader->AddSpectator("MCTypes", &f_MCTypes);
     reader->AddSpectator("McNumber", &f_McNumber);
@@ -69,6 +63,7 @@ void CV_Application(TString channel, TString path)
 
     reader->BookMVA("BDT method", Form("%sOutput/%s/BDTG/weights/TMVACrossValidation_BDTG.weights.xml", path.Data(), channel.Data()));
 
+    // Define the input files and output files
     TString files[6]{
         (TString) path + "Input_Files/signal_VBF_" + channel + ".root",
         (TString) path + "Input_Files/signal_ggF_" + channel + ".root",
@@ -87,6 +82,7 @@ void CV_Application(TString channel, TString path)
         (TString) newpath + "data_" + channel + ".root",
     };
 
+    // Read the input files and process the trees
     for (int i = 0; i < 6; i++)
     {
         TFile file(files[i], "READ");
@@ -94,32 +90,23 @@ void CV_Application(TString channel, TString path)
         std::cout << " Now working on:" << file.GetName() << std::endl;
         std::cout << "--- Processing: " << oldtree->GetEntries() << " events" << std::endl;
 
-        // oldtree->SetBranchAddress("phi_H",            &phi_H);
         oldtree->SetBranchAddress("pt_H", &pt_H);
         oldtree->SetBranchAddress("lep_phi_1", &lep_phi_1);
         oldtree->SetBranchAddress("lep_eta_1", &lep_eta_1);
         oldtree->SetBranchAddress("lep_phi0_1", &lep_phi0_1);
         oldtree->SetBranchAddress("lep_pt_1", &lep_pt_1);
-        // oldtree->SetBranchAddress("met_phi",         &met_phi);
         oldtree->SetBranchAddress("met", &met);
         oldtree->SetBranchAddress("N_j_central", &N_j_central);
-        // oldtree->SetBranchAddress("HT",              &HT);
         oldtree->SetBranchAddress("y1_eta", &y1_eta);
         oldtree->SetBranchAddress("y1_phi0", &y1_phi0);
         oldtree->SetBranchAddress("y2_eta", &y2_eta);
         oldtree->SetBranchAddress("y2_phi", &y2_phi);
         oldtree->SetBranchAddress("eta_W", &eta_W);
-        // oldtree->SetBranchAddress("MT_W1",           &MT_W1);
         oldtree->SetBranchAddress("Dr_yyW", &Dr_yyW);
         oldtree->SetBranchAddress("Dr_lv", &Dr_lv);
         oldtree->SetBranchAddress("Dphi_metll", &Dphi_metll);
         oldtree->SetBranchAddress("Dphi_metyy", &Dphi_metyy);
         oldtree->SetBranchAddress("minDphi_metjl", &minDphi_metjl);
-        // oldtree->SetBranchAddress("mbig",            &mbig);
-        // oldtree->SetBranchAddress("ptbig",           &ptbig);
-        // oldtree->SetBranchAddress("Dy_bigyy",        &Dy_bigyy);
-        // oldtree->SetBranchAddress("Dy_bigyy2",       &Dy_bigyy2);
-        // oldtree->SetBranchAddress("Dr_lj",           &Dr_lj);
 
         oldtree->SetBranchAddress("eventID", &eventID);
         oldtree->SetBranchAddress("MCTypes", &MCTypes);
@@ -134,6 +121,7 @@ void CV_Application(TString channel, TString path)
 
         auto b_1l0tau = newtree->Branch((TString) "BDTG", &sample);
 
+        // Update the branches to match the new variables
         for (Long64_t j = 0; j < oldtree->GetEntries(); j++)
         {
             if (j % 10000 == 0)
@@ -218,6 +206,8 @@ void CV_Application(TString channel, TString path)
 
             // TMVA BDTG output is between -1 and 1, we shift it to 0 and 1 for consistency with the NN
             sample = (reader->EvaluateMVA("BDT method") + 1) / 2;
+
+            // Fill the new tree with the updated variables
             newtree->Fill();
         }
         std::cout << "--- End of event loop: " << std::endl;

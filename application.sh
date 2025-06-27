@@ -23,6 +23,7 @@ done
 
 channels=$@
 
+# Set default channels if none are provided
 if [ -z $channels ]; then
     channels=( "1l0tau" "0l1tau" "2l0tau" "1l1tau" "0l2tau" )
 fi
@@ -35,6 +36,8 @@ for channel in "${channels[@]}"; do
         exit 1
     fi
 
+    # Run the BDTG application first
+    # Must be ran first as it overwrites the output ROOT files with the input ROOT files
     (
         cd Scripts/BDTG
 

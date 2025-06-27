@@ -20,6 +20,7 @@ function help() {
     exit 1
 }
 
+# Asks to compile the BDTG if not already compiled
 function compile() {
     echo "Want to compile? (y/n)"
     read -r compile_choice
@@ -65,10 +66,12 @@ shift $((OPTIND-1))
 
 channels=$@
 
+# If no channels are provided, use default channels
 if [ -z $channels ]; then
     channels=( "1l0tau" "0l1tau" "2l0tau" "1l1tau" "0l2tau" )
 fi
 
+# If jobs is not specified, set it to the number of folds
 if [ -z $n_jobs ]; then
     n_jobs=$kfolds
 fi
@@ -82,11 +85,14 @@ for channel in "${channels[@]}"; do
     fi
 
     if [ $mva == "bdt" ]; 
+
+    # Create output directories
     then
         mkdir -p Output/$channel/BDTG
         mkdir -p Output/Files
     (
 
+        # Check if the BDTG is compiled and as the user to compile it if not
         if [ ! -f Scripts/BDTG/libbdtg_rdict.pcm ]; then
             echo "Error: libbdtg_rdict.pcm not found in $(pwd)."
             echo "Compile the BDTG first."

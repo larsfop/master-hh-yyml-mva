@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from pathlib import Path
 import uproot
+from ray.tune.logger import LoggerCallback
 
 from .metrics import auc_score
 
@@ -194,3 +195,91 @@ class NNLogger:
         
         return last_results
     
+class CustomLogger(LoggerCallback):
+    def __init__(self, kfold: int = 0, path: str|Path = 'Output'):
+        self.kfold = kfold
+        self.path = self.path if isinstance(self.path, Path) else Path(self.path)
+        
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+        self.results = {}
+        self.config = {}
+        
+    def on_trial_start(self, trial, **info):
+        pass
+    
+        
+    def on_trial_result(self, iteration, trial, result, **info):
+        pass
+        
+        
+    def on_trial_complete(self, iteration, trials, trial, **info):
+        self.config[trial.trial_id] = trial.config
+        
+    
+    def on_experiment_end(self, trials, **info):
+        print(
+            '------------------------------------------\n'\
+            '   Hyperparameter optimization complete\n'\
+            f'  Writing results to {self.path.stem}\n'\
+            '------------------------------------------'
+        )
+        
+        n = len(trials)
+        
+        params = {
+            'eta': np.zeros(n),
+            'lambda': np.zeros(n),
+            'batch_size': np.zeros(n),
+            'num_hidden_layers': np.zeros(n),
+            'num_hidden_neurons': np.zeros(n),
+        }
+        if not self.kfold:
+            params.update({
+                'train_loss': np.zeros(n),
+                'train_auc': np.zeros(n),
+                'test_loss': np.zeros(n),
+                'test_auc': np.zeros(n),
+            })
+        else:
+            params.update({
+                f'{name}_fold_{i}': np.zeros(n) for i in range(1, self.kfold + 1) for name in ['train_loss', 'train_auc', 'test_loss', 'test_auc']
+            })
+            params.update({
+                'train_loss_mean': np.zeros(n),
+                'train_auc_mean': np.zeros(n),
+                'test_loss_mean': np.zeros(n),
+                'test_auc_mean': np.zeros(n),
+            })
+            
+        for i, trial in enumerate(trials):
+            result = trial.last_result
+            config = trial.config
+            
+            params['eta'][i] = config['lr']
+            params['lambda'][i] = config['lmbda']
+            params['batch_size'][i] = config['batch_size']
+            params['num_hidden_layers'][i] = len(config['hidden_neurons'])
+            params['num_hidden_neurons'][i] = config['hidden_neurons'][0]
+            
+            if not self.kfold:
+                params['train_loss'][i] = result['train_loss']
+                params['train_auc'][i] = result['train_auc']
+                params['test_loss'][i] = result['test_loss']
+                params['test_auc'][i] = result['test_auc']
+                
+            else:
+                for fold in range(1, self.kfold + 1):
+                    params[f'train_loss_fold_{fold}'][i] = result[f'fold_{fold}']['train_loss']
+                    params[f'train_auc_fold_{fold}'][i] = result[f'fold_{fold}']['train_auc']
+                    params[f'test_loss_fold_{fold}'][i] = result[f'fold_{fold}']['test_loss']
+                    params[f'test_auc_fold_{fold}'][i] = result[f'fold_{fold}']['test_auc']
+                    
+                params['train_loss_mean'][i] = result['train_loss']
+                params['train_auc_mean'][i] = result['train_auc']
+                params['test_loss_mean'][i] = result['test_loss']
+                params['test_auc_mean'][i] = result['test_auc']
+                    
+        with uproot.recreate(self.path) as file:
+            
+            file['Hyperparameter_Optimisation'] = params

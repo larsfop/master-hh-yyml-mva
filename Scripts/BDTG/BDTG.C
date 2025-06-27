@@ -18,6 +18,7 @@ int main(int argc, char** argv)
 
     int opt;
 
+    // Parse command line arguments
     while ((opt = getopt(argc, argv, "c:bap:n:k:")) != -1)
     {
         switch (opt)
@@ -45,6 +46,7 @@ int main(int argc, char** argv)
 
     printf("Processing channel: %s\n", channel.Data());
 
+    // Enable multithreading
     printf("Running with %i threads\n", n_threads);
     ROOT::EnableImplicitMT(n_threads);
 

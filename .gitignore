@@ -13,5 +13,4 @@ __pycache__
 *.hdf5
 
 !CMakeLists.txt
-libbdtg_rdict.pcm
 !requirements.txt

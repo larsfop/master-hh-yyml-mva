@@ -12,13 +12,13 @@ import sys
 import time
 from typing import Callable, OrderedDict
 from copy import deepcopy
-# import multiprocessing as mp
 from multiprocessing.managers import BaseManager
 import enlighten
 from pathlib import Path
 import sys
 import traceback
 
+# Add the parent directory to the system path to import utils
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 
@@ -31,6 +31,13 @@ class EarlyStopping:
             rise_delta: float = 0,
             threshold_delta: float = 0,
     ) -> None:
+        """
+        Early stopping mechanism to stop training when the model performance does not improve.
+        Args:
+            patience (int): Number of epochs to wait before stopping if no improvement.
+            rise_delta (float): Minimum increase in test score to consider it an improvement.
+            threshold_delta (float): Minimum difference between test and train score.
+        """
         
         self.patience = patience
         self.rise_delta = rise_delta
@@ -40,6 +47,12 @@ class EarlyStopping:
         self.counted = False
 
     def __call__(self, train_score, test_score: float) -> bool:
+        """
+        Check if the early stopping condition is met based on the train and test scores.
+        Args:
+            train_score (float): Training score of the model.
+            test_score (float): Test score of the model.
+        """
         if test_score < self.prev_score:
             self.counter = 0
             self.prev_score = test_score

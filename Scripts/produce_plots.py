@@ -652,6 +652,9 @@ def compare_significance(
 def main(
     channel: str = '1l0tau',
     suffix: str = 'pdf',
+    hyperparameter_optimisation: bool = True,
+    mva_evaluation: bool = True,
+    mva_comparison: bool = True,
 ):
     
     R.gStyle.SetOptStat(0) # Disable the statistics box
@@ -668,326 +671,329 @@ def main(
     # |                                 Hyperparameter Optimisation                                      |
     # +--------------------------------------------------------------------------------------------------+
     
-    print('+' + '-' * 100 + '+')
-    print(f'|{"Hyperparameter Optimisation":^100}|')
-    print('+' + '-' * 100 + '+')
+    if hyperparameter_optimisation:
     
-    with Timer(exit_msg='Finished Hyperparameter Optimisation'):
-        input_hp = workspace_path / f'Output/{channel}/NN/Hyperparameter_Optimisation'
-        output = input_hp / 'plots'
+        print('+' + '-' * 100 + '+')
+        print(f'|{"Hyperparameter Optimisation":^100}|')
+        print('+' + '-' * 100 + '+')
         
-        output.mkdir(parents=True, exist_ok=True)
-        
-        # Grid search parameters
-        hp_opts = {
-            'lr': ('eta', 'lambda'),
-            'lb': ('eta', 'batch_size'),
-            'h': ('num_hidden_neurons', 'num_hidden_layers'),
-        }
-        
-        for file in input_hp.glob(f'*.root'):
-            hp = file.stem.split('_')[-1]
-            x, y = hp_opts[hp]
+        with Timer(exit_msg='Finished Hyperparameter Optimisation'):
+            input_hp = workspace_path / f'Output/{channel}/NN/Hyperparameter_Optimisation'
+            output = input_hp / 'plots'
             
-            with uproot.open(file) as f:
-                df = f['Hyperparameter_Optimisation'].arrays(library='pd')
+            output.mkdir(parents=True, exist_ok=True)
+            
+            # Grid search parameters
+            hp_opts = {
+                'lr': ('eta', 'lambda'),
+                'lb': ('eta', 'batch_size'),
+                'h': ('num_hidden_neurons', 'num_hidden_layers'),
+            }
+            
+            for file in input_hp.glob(f'*.root'):
+                hp = file.stem.split('_')[-1]
+                x, y = hp_opts[hp]
                 
-            heatmap(
-                df, 
-                x=x,
-                y=y,
-                z=f'test_auc_mean',
-                name=workspace_path / output / f'{file.stem}.{suffix}',
-            )
-            
-        plt.close('all')
+                with uproot.open(file) as f:
+                    df = f['Hyperparameter_Optimisation'].arrays(library='pd')
+                    
+                heatmap(
+                    df, 
+                    x=x,
+                    y=y,
+                    z=f'test_auc_mean',
+                    name=workspace_path / output / f'{file.stem}.{suffix}',
+                )
+                
+            plt.close('all')
     
     # +--------------------------------------------------------------------------------------------------+
     # |                                          MVA Evaluation                                          |
     # +--------------------------------------------------------------------------------------------------+
     
-    print('+' + '-' * 100 + '+')
-    print(f'|{"MVA Evaluation":^100}|')
-    print('+' + '-' * 100 + '+')
-    
-    roc_figs = {
-        f'fold{fold}': {'fig': None, 'ax': None} for fold in range(1, 5)
-    }
-    
-    # Create the output directory for the combined MVA plots
-    combined_output = workspace_path / f'Output/{channel}/plots'
-    combined_output.mkdir(parents=True, exist_ok=True)
-    
-    
-    input = workspace_path / f'Output/{channel}/NN'
-    output = input / 'plots'
-    
-    output.mkdir(parents=True, exist_ok=True)
-    
-    # Evaluate the BDTG training performance
-    
-    with Timer(exit_msg='Finished BDT evaluation',):
-        input = workspace_path / f'Output/{channel}/BDTG'
+    if mva_evaluation:
+        
+        print('+' + '-' * 100 + '+')
+        print(f'|{"MVA Evaluation":^100}|')
+        print('+' + '-' * 100 + '+')
+        
+        roc_figs = {
+            f'fold{fold}': {'fig': None, 'ax': None} for fold in range(1, 5)
+        }
+        
+        # Create the output directory for the combined MVA plots
+        combined_output = workspace_path / f'Output/{channel}/plots'
+        combined_output.mkdir(parents=True, exist_ok=True)
+        
+        
+        input = workspace_path / f'Output/{channel}/NN'
         output = input / 'plots'
         
         output.mkdir(parents=True, exist_ok=True)
+        
+        # Evaluate the BDTG training performance
+        
+        with Timer(exit_msg='Finished BDT evaluation',):
+            input = workspace_path / f'Output/{channel}/BDTG'
+            output = input / 'plots'
+            
+            output.mkdir(parents=True, exist_ok=True)
+            # Read the data from each fold
+            for i, file in enumerate(input.glob('BDTG*fold*.root'), 1):
+                with uproot.open(file) as f:
+                    datasets = {
+                        'train': f['TrainTree'].arrays(library='pd'),
+                        'test': f['TestTree'].arrays(library='pd'),
+                    }
+                    
+                datasets['train'][f'BDTG_fold{i}'] = (datasets['train'][f'BDTG_fold{i}'] + 1) / 2
+                datasets['test'][f'BDTG_fold{i}'] = (datasets['test'][f'BDTG_fold{i}'] + 1) / 2
+                
+                fig, ax = plot_roc(
+                        datasets['test'],
+                        mva='BDTG',
+                        channel=channel,
+                        name=combined_output / f'{channel}_roc_fold{i}.{suffix}',
+                        fold=i,
+                        **roc_figs[f'fold{i}'],
+                    )
+                    
+                roc_figs[f'fold{i}']['fig'] = fig
+                roc_figs[f'fold{i}']['ax'] = ax
+                    
+                # Plot the overfitting check for each fold
+                overfitting_test(
+                    datasets,
+                    name=output / f'BDTG_{channel}_overfitting_check_fold{i}.{suffix}',
+                    fold=i,
+                    channel=channel,
+                    mva='BDTG',
+                )
+                
+                
+        # Evaluate the Neural Network training performance
+        input = workspace_path / f'Output/{channel}/NN'
+        output = input / 'plots'
+        
         # Read the data from each fold
-        for i, file in enumerate(input.glob('BDTG*fold*.root'), 1):
-            with uproot.open(file) as f:
+        for cl, label in zip(['bc', 'mc'], ['binary', 'multiclass']):
+            with Timer(exit_msg=f'Finished NN {label} classification evaluation',):
+                data = None
+                for i, file in enumerate(input.glob(f'DNN_{cl}*fold*.root'), 1):
+                    with Timer(exit_msg=f'Finished processing fold {i}',):
+                        with uproot.open(file) as f:
+                            if data is None:
+                                data = f['per_epoch'].arrays(library='pd')
+                            else:
+                                data += f['per_epoch'].arrays(library='pd')
+                                
+                            datasets = {
+                                'train': f['TrainTree'].arrays(library='pd'),
+                                'test': f['TestTree'].arrays(library='pd'),
+                            }
+                            
+                        fig, ax = plot_roc(
+                            datasets['test'],
+                            mva='DNN',
+                            channel=channel,
+                            name=combined_output / f'{channel}_roc_fold{i}.{suffix}',
+                            fold=i,
+                            classification=label,
+                            **roc_figs[f'fold{i}'],
+                        )
+                        
+                        roc_figs[f'fold{i}']['fig'] = fig
+                        roc_figs[f'fold{i}']['ax'] = ax
+                            
+                        # Plot the overfitting check for each fold
+                        overfitting_test(
+                            datasets,
+                            name=output / f'DNN_{cl}_{channel}_overfitting_check_fold{i}.{suffix}',
+                            fold=i,
+                            channel=channel,
+                            mva='DNN',
+                            classification=label,
+                        )
+                        
+                        if cl == 'mc':
+                            plot_ternary(
+                                datasets['test'],
+                                channel=channel,
+                                name=output / f'DNN_{cl}_{channel}_ternary_fold{i}.{suffix}',
+                                fold=i,
+                            )
+                        
+                with Timer(exit_msg='Finished processing evolving plots',):
+                    data /= i
+                    data['epochs'] = np.arange(1, len(data['train_loss']) + 1)
+                        
+                    # Plot the loss rate
+                    fig, ax = plot(
+                        data,
+                        x='epochs',
+                        y='train_loss',
+                        channel=channel,
+                        name=output / f'DNN_{cl}_{channel}_loss.{suffix}',
+                    )
+                    plot(
+                        data,
+                        x='epochs',
+                        y='test_loss',
+                        channel=channel,
+                        name=output / f'DNN_{cl}_{channel}_loss.{suffix}',
+                        fig=fig,
+                        ax=ax,
+                    )
+                    
+                    # Plot the AUC
+                    fig, ax = plot(
+                        data,
+                        x='epochs',
+                        y='train_auc',
+                        channel=channel,
+                        name=output / f'DNN_{cl}_{channel}_auc.{suffix}',
+                    )
+                    plot(
+                        data,
+                        x='epochs',
+                        y='test_auc',
+                        channel=channel,
+                        name=output / f'DNN_{cl}_{channel}_auc.{suffix}',
+                        fig=fig,
+                        ax=ax,
+                    )
+                
+            plt.close('all')
+            
+        for cl, classification in zip(['bc', 'mc'], ['binary', 'multiclass']):
+            with uproot.open(workspace_path / f'Output/{channel}/NN/DNN_{cl}_{channel}.root') as f:
                 datasets = {
                     'train': f['TrainTree'].arrays(library='pd'),
                     'test': f['TestTree'].arrays(library='pd'),
                 }
                 
-            datasets['train'][f'BDTG_fold{i}'] = (datasets['train'][f'BDTG_fold{i}'] + 1) / 2
-            datasets['test'][f'BDTG_fold{i}'] = (datasets['test'][f'BDTG_fold{i}'] + 1) / 2
-            
-            fig, ax = plot_roc(
-                    datasets['test'],
-                    mva='BDTG',
-                    channel=channel,
-                    name=combined_output / f'{channel}_roc_fold{i}.{suffix}',
-                    fold=i,
-                    **roc_figs[f'fold{i}'],
-                )
-                
-            roc_figs[f'fold{i}']['fig'] = fig
-            roc_figs[f'fold{i}']['ax'] = ax
-                
-            # Plot the overfitting check for each fold
-            overfitting_test(
-                datasets,
-                name=output / f'BDTG_{channel}_overfitting_check_fold{i}.{suffix}',
-                fold=i,
-                channel=channel,
-                mva='BDTG',
-            )
-            
-            
-    # Evaluate the Neural Network training performance
-    input = workspace_path / f'Output/{channel}/NN'
-    output = input / 'plots'
-    
-    # Read the data from each fold
-    for cl, label in zip(['bc', 'mc'], ['binary', 'multiclass']):
-        with Timer(exit_msg=f'Finished NN {label} classification evaluation',):
-            data = None
-            for i, file in enumerate(input.glob(f'DNN_{cl}*fold*.root'), 1):
-                with Timer(exit_msg=f'Finished processing fold {i}',):
-                    with uproot.open(file) as f:
-                        if data is None:
-                            data = f['per_epoch'].arrays(library='pd')
-                        else:
-                            data += f['per_epoch'].arrays(library='pd')
-                            
-                        datasets = {
-                            'train': f['TrainTree'].arrays(library='pd'),
-                            'test': f['TestTree'].arrays(library='pd'),
-                        }
-                        
-                    fig, ax = plot_roc(
-                        datasets['test'],
-                        mva='DNN',
-                        channel=channel,
-                        name=combined_output / f'{channel}_roc_fold{i}.{suffix}',
-                        fold=i,
-                        classification=label,
-                        **roc_figs[f'fold{i}'],
-                    )
-                    
-                    roc_figs[f'fold{i}']['fig'] = fig
-                    roc_figs[f'fold{i}']['ax'] = ax
-                        
-                    # Plot the overfitting check for each fold
-                    overfitting_test(
-                        datasets,
-                        name=output / f'DNN_{cl}_{channel}_overfitting_check_fold{i}.{suffix}',
-                        fold=i,
-                        channel=channel,
-                        mva='DNN',
-                        classification=label,
-                    )
-                    
-                    if cl == 'mc':
-                        plot_ternary(
-                            datasets['test'],
-                            channel=channel,
-                            name=output / f'DNN_{cl}_{channel}_ternary_fold{i}.{suffix}',
-                            fold=i,
-                        )
-                    
-            with Timer(exit_msg='Finished processing evolving plots',):
-                data /= i
-                data['epochs'] = np.arange(1, len(data['train_loss']) + 1)
-                    
-                # Plot the loss rate
-                fig, ax = plot(
-                    data,
-                    x='epochs',
-                    y='train_loss',
-                    channel=channel,
-                    name=output / f'DNN_{cl}_{channel}_loss.{suffix}',
-                )
-                plot(
-                    data,
-                    x='epochs',
-                    y='test_loss',
-                    channel=channel,
-                    name=output / f'DNN_{cl}_{channel}_loss.{suffix}',
-                    fig=fig,
-                    ax=ax,
-                )
-                
-                # Plot the AUC
-                fig, ax = plot(
-                    data,
-                    x='epochs',
-                    y='train_auc',
-                    channel=channel,
-                    name=output / f'DNN_{cl}_{channel}_auc.{suffix}',
-                )
-                plot(
-                    data,
-                    x='epochs',
-                    y='test_auc',
-                    channel=channel,
-                    name=output / f'DNN_{cl}_{channel}_auc.{suffix}',
-                    fig=fig,
-                    ax=ax,
-                )
-            
-        plt.close('all')
-        
-    for cl, classification in zip(['bc', 'mc'], ['binary', 'multiclass']):
-        with uproot.open(workspace_path / f'Output/{channel}/NN/DNN_{cl}_{channel}.root') as f:
-            datasets = {
-                'train': f['TrainTree'].arrays(library='pd'),
-                'test': f['TestTree'].arrays(library='pd'),
-            }
-            
-            overfitting_test(
-                datasets,
-                name=workspace_path / f'Output/{channel}/NN/plots/DNN_{cl}_{channel}_overfitting_check.{suffix}',
-                fold=None,
-                channel=channel,
-                mva='DNN',
-                classification=classification,
-            )
-            
-            plot_significance(
-                datasets['test'],
-                channel=channel,
-                name=workspace_path / f'Output/{channel}/NN/plots/DNN_{cl}_{channel}_significance.{suffix}',
-                fold=None,
-                mva='DNN',
-                classification=classification,
-            )
-            
-            plot_roc(
-                datasets['test'],
-                mva='DNN',
-                channel=channel,
-                name=workspace_path / f'Output/{channel}/NN/plots/DNN_{cl}_{channel}_roc.{suffix}',
-                fold=None,
-                classification=classification,
-            )
-            
-            if classification == 'multiclass':
-                plot_ternary(
-                    datasets['test'],
-                    channel=channel,
-                    name=workspace_path / f'Output/{channel}/NN/plots/DNN_{cl}_{channel}_ternary.{suffix}',
+                overfitting_test(
+                    datasets,
+                    name=workspace_path / f'Output/{channel}/NN/plots/DNN_{cl}_{channel}_overfitting_check.{suffix}',
                     fold=None,
+                    channel=channel,
+                    mva='DNN',
+                    classification=classification,
                 )
-        
+                
+                plot_significance(
+                    datasets['test'],
+                    channel=channel,
+                    name=workspace_path / f'Output/{channel}/NN/plots/DNN_{cl}_{channel}_significance.{suffix}',
+                    fold=None,
+                    mva='DNN',
+                    classification=classification,
+                )
+                
+                plot_roc(
+                    datasets['test'],
+                    mva='DNN',
+                    channel=channel,
+                    name=workspace_path / f'Output/{channel}/NN/plots/DNN_{cl}_{channel}_roc.{suffix}',
+                    fold=None,
+                    classification=classification,
+                )
+                
+                if classification == 'multiclass':
+                    plot_ternary(
+                        datasets['test'],
+                        channel=channel,
+                        name=workspace_path / f'Output/{channel}/NN/plots/DNN_{cl}_{channel}_ternary.{suffix}',
+                        fold=None,
+                    )
+            
     # +--------------------------------------------------------------------------------------------------+
     # |                                          Compare MVAs                                            |
     # +--------------------------------------------------------------------------------------------------+
     
-    print('+' + '-' * 100 + '+')
-    print(f'|{"Compare MVAs":^100}|')
-    print('+' + '-' * 100 + '+')
-    
-    with Timer(exit_msg='Finished comparing MVAs'):
-        input_files = workspace_path / 'Output/Files'
+    if mva_comparison:
         
-        dataframes = []
-        for file in input_files.glob(f'*{channel}.root'):
-            if not 'data' in file.stem:
-                with uproot.open(file) as f:
-                    df = f['output'].arrays(['BDTG', 'DNN', 'DNN_signal', 'DNN_SH', 'DNN_CB', 'weight'], library='pd')
-                    
-                    if 'signal' in file.stem:
-                        df['classID'] = 0
-                    elif 'SH' in file.stem:
-                        df['classID'] = 1
-                    else:
-                        df['classID'] = 2
+        print('+' + '-' * 100 + '+')
+        print(f'|{"Compare MVAs":^100}|')
+        print('+' + '-' * 100 + '+')
+        
+        with Timer(exit_msg='Finished comparing MVAs'):
+            input_files = workspace_path / 'Output/Files'
+            
+            dataframes = []
+            for file in input_files.glob(f'*{channel}.root'):
+                if not 'data' in file.stem:
+                    with uproot.open(file) as f:
+                        df = f['output'].arrays(['BDTG', 'DNN', 'DNN_signal', 'DNN_SH', 'DNN_CB', 'weight'], library='pd')
                         
-                    dataframes.append(df)
-                    
-                    # Plot weights distribution
-                    plot_weights(
-                        df['weight'].values,
-                        name=workspace_path / f'Output/{channel}/plots/{file.stem}_weights.{suffix}',
-                        process='yy+jets' if 'Sherpa' in file.stem else file.stem,
-                        channel=channel,
-                    )
-        
-        data = pd.concat(dataframes, ignore_index=True)
-        
-        compare_significance(data, combined_output / f'combined_{channel}_significance.{suffix}', channel)
+                        if 'signal' in file.stem:
+                            df['classID'] = 0
+                        elif 'SH' in file.stem:
+                            df['classID'] = 1
+                        else:
+                            df['classID'] = 2
+                            
+                        dataframes.append(df)
+                        
+                        # Plot weights distribution
+                        plot_weights(
+                            df['weight'].values,
+                            name=workspace_path / f'Output/{channel}/plots/{file.stem}_weights.{suffix}',
+                            process='yy+jets' if 'Sherpa' in file.stem else file.stem,
+                            channel=channel,
+                        )
             
-        plot_significance(
-            data,
-            channel=channel,
-            name=workspace_path / f'Output/{channel}/NN/plots/DNN_mc_{channel}_significance.{suffix}',
-            mva='DNN',
-            classification='multiclass',
-        )
+            data = pd.concat(dataframes, ignore_index=True)
             
-        fig = None
-        ax = None
-        for mva, classification in zip(['BDTG', 'DNN', 'DNN'], ['binary', 'binary', 'multiclass']):
-            fig, ax = plot_roc(
+            compare_significance(data, combined_output / f'combined_{channel}_significance.{suffix}', channel)
+                
+            plot_significance(
                 data,
-                mva=mva,
                 channel=channel,
-                classification=classification,
-                name=combined_output / f'combined_{channel}_roc.{suffix}',
-                fig=fig,
-                ax=ax,
+                name=workspace_path / f'Output/{channel}/NN/plots/DNN_mc_{channel}_significance.{suffix}',
+                mva='DNN',
+                classification='multiclass',
             )
-        
-        plot_ternary(
-            data,
-            channel=channel,
-            name=combined_output / f'combined_{channel}_ternary.{suffix}',
-            fold=None,
-        )
-        
-        plt.close('all')
+                
+            fig = None
+            ax = None
+            for mva, classification in zip(['BDTG', 'DNN', 'DNN'], ['binary', 'binary', 'multiclass']):
+                fig, ax = plot_roc(
+                    data,
+                    mva=mva,
+                    channel=channel,
+                    classification=classification,
+                    name=combined_output / f'combined_{channel}_roc.{suffix}',
+                    fig=fig,
+                    ax=ax,
+                )
+            
+            plot_ternary(
+                data,
+                channel=channel,
+                name=combined_output / f'combined_{channel}_ternary.{suffix}',
+                fold=None,
+            )
+            
+            plt.close('all')
     
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Produce plots from the dataset")
     parser.add_argument(
-        "--input_path",
-        type=str,
-        default="../Files/plots/",
-        help="Path to the input data file",
-    )
-    parser.add_argument(
-        "--output_path",
-        type=str,
-        default="../Files/plots/",
-        help="Path to the output data file",
-    )
-    parser.add_argument(
         '-c', '--channel', type=str, default='1l0tau', help='Name of the channel. Default: 1l0tau'
     )
     parser.add_argument(
         '-s', '--suffix', type=str, default='pdf', help='Suffix of the output files. Default: pdf'
+    )
+    parser.add_argument(
+        '-ho', '--hyperparameter', action='store_true', help='Produce hyperparameter optimisation plots. Default: False'
+    )
+    parser.add_argument(
+        '-me', '--mva_evaluation', action='store_true', help='Produce MVA evaluation plots. Default: False'
+    )
+    parser.add_argument(
+        '-mc', '--mva_comparison', action='store_true', help='Produce MVA comparison plots. Default: False'
     )
     
     args = parser.parse_args()
@@ -998,4 +1004,7 @@ if __name__ == "__main__":
         main(
             channel=args.channel,
             suffix=args.suffix,
+            hyperparameter_optimisation=args.hyperparameter,
+            mva_evaluation=args.mva_evaluation,
+            mva_comparison=args.mva_comparison,
         )

@@ -67,14 +67,6 @@ void CV_Classification(TString channel, TString path, Int_t nFolds)
         dataloader->AddVariable("Jet_pt1",        "Jet_pt1",        "",  'D');
     }
     
-    // dataloader->AddVariable("HT",             "HT",             "",  'D');      
-    // dataloader->AddVariable("MT_W1",          "MT_W1",          "",  'D');
-    // dataloader->AddVariable("mbig",           "mbig",           "",  'D');
-    // dataloader->AddVariable("ptbig",          "ptbig",          "",  'D');
-    // dataloader->AddVariable("Dy_bigyy",       "Dy_bigyy",       "",  'D');
-    // dataloader->AddVariable("Dy_bigyy2",      "Dy_bigyy2",      "",  'D');
-    // dataloader->AddVariable("Dr_lj",          "Dr_lj",          "",  'D');
-
     // Spectators are variables that the model will keep,
     // but not use for the training
     dataloader->AddSpectator("eventID");
@@ -85,14 +77,6 @@ void CV_Classification(TString channel, TString path, Int_t nFolds)
     dataloader->AddBackgroundTree((TTree *)& Bkg);
 
     dataloader->SetWeightExpression("weight");
-
-    // ------------------------------------------------------------
-    // Here we can make additional cuts before we start training if necessary
-    TString t_cut="";
-    // if (channel == "1l0tau")
-    //     t_cut = "pass_1l0tau";
-
-    TCut cut = (TCut)t_cut;
 
     // ------------------------------------------------------------
     // Start the training and evaluation of the data
